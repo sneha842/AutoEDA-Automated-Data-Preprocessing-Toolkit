@@ -26,7 +26,7 @@ jobs:
 
     - name: Run flake8
       run: |
-        flake8 autoeda --ignore=E501
+        flake8 . --ignore=E501
 
     - name: Set up Node.js
       uses: actions/setup-node@v3
