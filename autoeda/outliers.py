@@ -3,13 +3,12 @@ import numpy as np
 from scipy.stats import zscore
 import json
 import os
-#
+
 # 1. Load and inspect the scaled dataset
-input_path = "notebooks/output-files/autoEDA_scaled_output.csv"  # Adjust path if needed
+input_path = "notebooks/output-files/autoEDA_scaled_output.csv"
 df = pd.read_csv(input_path)
 numeric_cols = df.select_dtypes(include=["float64", "int64"]).columns.tolist()
 
-# Containers for results
 detection_methods = {}
 outliers_detected = {}
 rows_with_outliers = set()
@@ -17,12 +16,10 @@ outlier_flags = pd.DataFrame(index=df.index)
 
 # 2. Detect Skewness and apply outlier detection
 for col in numeric_cols:
-    # Fill NaNs to avoid zscore errors
     df[col] = df[col].fillna(df[col].median())
     skew_val = df[col].skew()
 
     if abs(skew_val) < 1.0:
-        # 3a. Z-score method
         method = "Z-score"
         if df[col].std() == 0:
             z_scores = np.zeros_like(df[col])
@@ -32,20 +29,17 @@ for col in numeric_cols:
         lower_bound = df[col].mean() - 3 * df[col].std()
         upper_bound = df[col].mean() + 3 * df[col].std()
     else:
-        # 3b. IQR method
         method = "IQR"
-        Q1 = df[col].quantile(0.25)
-        Q3 = df[col].quantile(0.75)
-        IQR = Q3 - Q1
-        lower_bound = Q1 - 1.5 * IQR
-        upper_bound = Q3 + 1.5 * IQR
+        q1 = df[col].quantile(0.25)
+        q3 = df[col].quantile(0.75)
+        iqr = q3 - q1
+        lower_bound = q1 - 1.5 * iqr
+        upper_bound = q3 + 1.5 * iqr
         outliers = (df[col] < lower_bound) | (df[col] > upper_bound)
 
     detection_methods[col] = method
     outliers_detected[col] = int(outliers.sum())
     rows_with_outliers.update(df[outliers].index)
-
-    # 4. Flag outliers
     outlier_flags[f"{col}_is_outlier"] = outliers.astype(int)
 
 # 5. Save flagged dataset
@@ -60,11 +54,11 @@ for col in numeric_cols:
         lower_bound = df[col].mean() - 3 * df[col].std()
         upper_bound = df[col].mean() + 3 * df[col].std()
     else:
-        Q1 = df[col].quantile(0.25)
-        Q3 = df[col].quantile(0.75)
-        IQR = Q3 - Q1
-        lower_bound = Q1 - 1.5 * IQR
-        upper_bound = Q3 + 1.5 * IQR
+        q1 = df[col].quantile(0.25)
+        q3 = df[col].quantile(0.75)
+        iqr = q3 - q1
+        lower_bound = q1 - 1.5 * iqr
+        upper_bound = q3 + 1.5 * iqr
 
     capped_df[col] = np.clip(df[col], lower_bound, upper_bound)
 
@@ -85,6 +79,7 @@ report = {
         "removed": "autoEDA_outliers_removed.csv"
     }
 }
+
 with open("autoEDA_outlier_report.json", "w") as f:
     json.dump(report, f, indent=2)
 
